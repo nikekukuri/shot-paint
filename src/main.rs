@@ -2,20 +2,130 @@ use scrap::{Capturer, Display};
 use std::io::ErrorKind::WouldBlock;
 use std::thread;
 use std::time::Duration;
+use std::time;
+
+
 use image::{ImageBuffer, Rgba};
 use winit::{
-    event::{Event, WindowEvent, MouseButton, ElementState},
-    event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    application::ApplicationHandler,
+    event::{KeyEvent, Event, WindowEvent, MouseButton, ElementState, StartCause},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    keyboard::{Key, NamedKey},
+    window::{Window, WindowId},
     dpi::LogicalPosition,
 };
 
+
+const WAIT_TIME: time::Duration = time::Duration::from_millis(100);
+const POLL_SLEEP_TIME: time::Duration = time::Duration::from_millis(100);
+
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    #[default]
+    Wait,
+    WaitUntil,
+    Poll,
+}
+
+#[derive(Default)]
+struct ApplicationControlFlow {
+    mode: Mode,
+    request_redraw: bool,
+    wait_cancelled: bool,
+    close_requested: bool,
+    window: Option<Window>,
+}
+
+impl ApplicationHandler for ApplicationControlFlow {
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        //info!("new_events: {cause:?}");
+
+        self.wait_cancelled = match cause {
+            StartCause::WaitCancelled { .. } => self.mode == Mode::WaitUntil,
+            _ => false,
+        }
+    }
+
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let window_attributes = Window::default_attributes().with_title(
+            "Press 1, 2, 3 to change control flow mode. Press R to toggle redraw requests.",
+        );
+        self.window = Some(event_loop.create_window(window_attributes).unwrap());
+    }
+
+    fn window_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _window_id: WindowId,
+        event: WindowEvent,
+    ) {
+        //info!("{event:?}");
+
+        match event {
+            WindowEvent::CloseRequested => {
+                self.close_requested = true;
+            },
+            WindowEvent::KeyboardInput {
+                event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
+                ..
+            } => match key.as_ref() {
+                // WARNING: Consider using `key_without_modifiers()` if available on your platform.
+                // See the `key_binding` example
+                Key::Character("1") => {
+                    self.mode = Mode::Wait;
+                    //warn!("mode: {:?}", self.mode);
+                },
+                Key::Character("2") => {
+                    self.mode = Mode::WaitUntil;
+                    //warn!("mode: {:?}", self.mode);
+                },
+                Key::Character("3") => {
+                    self.mode = Mode::Poll;
+                    //warn!("mode: {:?}", self.mode);
+                },
+                Key::Character("r") => {
+                    self.request_redraw = !self.request_redraw;
+                    //warn!("request_redraw: {}", self.request_redraw);
+                },
+                Key::Named(NamedKey::Escape) => {
+                    self.close_requested = true;
+                },
+                _ => (),
+            },
+            WindowEvent::RedrawRequested => {},
+            _ => (),
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        if self.request_redraw && !self.wait_cancelled && !self.close_requested {
+            self.window.as_ref().unwrap().request_redraw();
+        }
+
+        match self.mode {
+            Mode::Wait => event_loop.set_control_flow(ControlFlow::Wait),
+            Mode::WaitUntil => {
+                if !self.wait_cancelled {
+                    event_loop
+                        .set_control_flow(ControlFlow::WaitUntil(time::Instant::now() + WAIT_TIME));
+                }
+            },
+            Mode::Poll => {
+                thread::sleep(POLL_SLEEP_TIME);
+                event_loop.set_control_flow(ControlFlow::Poll);
+            },
+        };
+
+        if self.close_requested {
+            event_loop.exit();
+        }
+    }
+}
+
 fn main() {
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_title("Select Area")
-        .build(&event_loop)
-        .unwrap();
+    let event_loop = EventLoop::new().unwrap();
+    
 
     let mut start_pos: Option<LogicalPosition<f64>> = None;
     let mut end_pos: Option<LogicalPosition<f64>> = None;
@@ -24,32 +134,35 @@ fn main() {
     start_pos = Some(LogicalPosition::new(0.0, 0.0));
     end_pos = Some(LogicalPosition::new(1000.0, 1000.0));
 
-    event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Wait;
+    let mut app = ApplicationControlFlow::default();
+    event_loop.run_app(&mut app);
 
-        match event {
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                WindowEvent::MouseInput { button, state, .. } => {
-                    if button == MouseButton::Left {
-                        if state == ElementState::Pressed {
-                            //let position = window.cursor_position().unwrap();
-                            //start_pos = Some(position);
-                            selecting = true;
-                        } else if state == ElementState::Released {
-                            //let position = window.cursor_position().unwrap();
-                            //end_pos = Some(position);
-                            selecting = false;
-                            capture_and_save_screenshot(start_pos, end_pos);
-                            *control_flow = ControlFlow::Exit;
-                        }
-                    }
-                }
-                _ => (),
-            },
-            _ => (),
-        }
-    });
+    //event_loop.run(move |event, control_flow| {
+    //    *control_flow = ControlFlow::Wait;
+
+    //    match event {
+    //        Event::WindowEvent { event, .. } => match event {
+    //            WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+    //            WindowEvent::MouseInput { button, state, .. } => {
+    //                if button == MouseButton::Left {
+    //                    if state == ElementState::Pressed {
+    //                        //let position = window.cursor_position().unwrap();
+    //                        //start_pos = Some(position);
+    //                        selecting = true;
+    //                    } else if state == ElementState::Released {
+    //                        //let position = window.cursor_position().unwrap();
+    //                        //end_pos = Some(position);
+    //                        selecting = false;
+    //                        capture_and_save_screenshot(start_pos, end_pos);
+    //                        *control_flow = ControlFlow::Exit;
+    //                    }
+    //                }
+    //            }
+    //            _ => (),
+    //        },
+    //        _ => (),
+    //    }
+    //});
 
 }
 
