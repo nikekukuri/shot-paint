@@ -10,4 +10,10 @@
     - [ ] Circle
     - [ ] Arrow
 
-もともと capture_and_save_screenshot() においていたものをApplicationControlFlowに移動させればよさそう。
+もともと capture_and_save_screenshot() においていたものをimpl ApplicationHandler for Appに移動させればよさそう。
+
+1. winitでウィンドウを作成
+2. winitでマウスのドラッグ＆ドロップの座標を取得
+3. imageで画像を読み込み
+4. winitのウィンドウに画像を描画
+5. あとは色々できるように
