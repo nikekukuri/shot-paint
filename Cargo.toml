@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 scrap = "0.5.0"
 image = "0.25"
-winit = "0.28.1"
+winit = "0.30.3"
