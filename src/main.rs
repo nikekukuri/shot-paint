@@ -13,6 +13,7 @@ use winit::{
     keyboard::{Key, NamedKey},
     window::{Window, WindowId},
     dpi::{LogicalPosition, PhysicalPosition},
+    platform::windows::WindowBorrowExtWindows,
 };
 
 
@@ -44,6 +45,18 @@ impl App {
     fn select_range(&mut self, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
         capture_and_save_screenshot(Some(start), Some(end));
     }
+
+    fn draw_selection(&self, window: &Window, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
+        // Implement drawing selection rectangle on the screen
+        // This is a placeholder for the actual drawing logic
+        let (x, y, width, height) = (
+            start.x.min(end.x),
+            start.y.min(end.y),
+            (start.x - end.x).abs(),
+            (start.y - end.y).abs(),
+        );
+        println!("Drawing selection: x={} y={} width={} height={}", x, y, width, height);
+    }
 }
 
 impl ApplicationHandler for App {
@@ -57,9 +70,11 @@ impl ApplicationHandler for App {
     }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes().with_title(
-            "Drag & Drop capture screenshot",
-        );
+        let window_attributes = Window::default_attributes()
+            .with_title("Drag & Drop capture screenshot",)
+            .with_transparent(true)
+            .with_fullscreen(Some(winit::window::Fullscreen::Borderless(None)))
+            .with_decorations(false);
         self.window = Some(event_loop.create_window(window_attributes).unwrap());
     }
 
@@ -98,6 +113,9 @@ impl ApplicationHandler for App {
             },
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_positon = position;
+                if let Some(start) = self.drag_start {
+                    self.draw_selection(self.window.as_ref().unwrap(), start, self.mouse_positon);
+                }
             },
             WindowEvent::KeyboardInput {
                 event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
