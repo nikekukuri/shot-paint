@@ -58,7 +58,7 @@ impl ApplicationHandler for App {
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes().with_title(
-            "Press 1, 2, 3 to change control flow mode. Press R to toggle redraw requests.",
+            "Drag & Drop capture screenshot",
         );
         self.window = Some(event_loop.create_window(window_attributes).unwrap());
     }
@@ -81,7 +81,7 @@ impl ApplicationHandler for App {
                     ElementState::Pressed => {
                         if button == MouseButton::Left {
                             // TODO: get mouse position
-                            self.drag_start = Some(PhysicalPosition::new(0.0, 0.0))
+                            self.drag_start = Some(self.mouse_positon);
                         }
                     },
                     ElementState::Released => {
