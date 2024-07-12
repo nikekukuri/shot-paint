@@ -12,7 +12,7 @@ use winit::{
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{Key, NamedKey},
     window::{Window, WindowId},
-    dpi::LogicalPosition,
+    dpi::{LogicalPosition, PhysicalPosition},
 };
 
 
@@ -29,15 +29,24 @@ enum Mode {
 }
 
 #[derive(Default)]
-struct ApplicationControlFlow {
+struct App {
     mode: Mode,
     request_redraw: bool,
     wait_cancelled: bool,
     close_requested: bool,
     window: Option<Window>,
+    mouse_positon: PhysicalPosition<f64>,
+    drag_start: Option<PhysicalPosition<f64>>,
+    //position: PhysicalPosition::<f64>,
 }
 
-impl ApplicationHandler for ApplicationControlFlow {
+impl App {
+    fn select_range(&mut self, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
+        capture_and_save_screenshot(Some(start), Some(end));
+    }
+}
+
+impl ApplicationHandler for App {
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         //info!("new_events: {cause:?}");
 
@@ -65,6 +74,30 @@ impl ApplicationHandler for ApplicationControlFlow {
         match event {
             WindowEvent::CloseRequested => {
                 self.close_requested = true;
+            },
+            WindowEvent::MouseInput { state, button, .. }=> {
+                // TODO: implement drag and drop range selection
+                match state {
+                    ElementState::Pressed => {
+                        if button == MouseButton::Left {
+                            // TODO: get mouse position
+                            self.drag_start = Some(PhysicalPosition::new(0.0, 0.0))
+                        }
+                    },
+                    ElementState::Released => {
+                        if button == MouseButton::Left {
+                            if let Some(start) = self.drag_start {
+                                // When the mouse is released, the selection
+                                let end = self.mouse_positon;
+                                self.select_range(start, end);
+                                self.drag_start = None;
+                            }
+                        }
+                    }
+                }
+            },
+            WindowEvent::CursorMoved { position, .. } => {
+                self.mouse_positon = position;
             },
             WindowEvent::KeyboardInput {
                 event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
@@ -126,47 +159,11 @@ impl ApplicationHandler for ApplicationControlFlow {
 fn main() {
     let event_loop = EventLoop::new().unwrap();
     
-
-    let mut start_pos: Option<LogicalPosition<f64>> = None;
-    let mut end_pos: Option<LogicalPosition<f64>> = None;
-    let mut selecting = false;
-
-    start_pos = Some(LogicalPosition::new(0.0, 0.0));
-    end_pos = Some(LogicalPosition::new(1000.0, 1000.0));
-
-    let mut app = ApplicationControlFlow::default();
+    let mut app = App::default();
     event_loop.run_app(&mut app);
-
-    //event_loop.run(move |event, control_flow| {
-    //    *control_flow = ControlFlow::Wait;
-
-    //    match event {
-    //        Event::WindowEvent { event, .. } => match event {
-    //            WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-    //            WindowEvent::MouseInput { button, state, .. } => {
-    //                if button == MouseButton::Left {
-    //                    if state == ElementState::Pressed {
-    //                        //let position = window.cursor_position().unwrap();
-    //                        //start_pos = Some(position);
-    //                        selecting = true;
-    //                    } else if state == ElementState::Released {
-    //                        //let position = window.cursor_position().unwrap();
-    //                        //end_pos = Some(position);
-    //                        selecting = false;
-    //                        capture_and_save_screenshot(start_pos, end_pos);
-    //                        *control_flow = ControlFlow::Exit;
-    //                    }
-    //                }
-    //            }
-    //            _ => (),
-    //        },
-    //        _ => (),
-    //    }
-    //});
-
 }
 
-fn capture_and_save_screenshot(start_pos: Option<LogicalPosition<f64>>, end_pos: Option<LogicalPosition<f64>>) {
+fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos: Option<PhysicalPosition<f64>>) {
     if let (Some(start), Some(end)) = (start_pos, end_pos) {
         let x_min = start.x.min(end.x) as i32;
         let y_min = start.y.min(end.y) as i32;
@@ -236,5 +233,6 @@ fn capture_and_save_screenshot(start_pos: Option<LogicalPosition<f64>>, end_pos:
         }
 
         image.save("screenshot.png").expect("Couldn't save image.");
+        println!("Screen shot saved as screenshot.png");
     }
 }
