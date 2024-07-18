@@ -195,9 +195,6 @@ fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos
         let display = Display::primary().expect("Couldn't find primary display.");
         let mut capturer = Capturer::new(display).expect("Couldn't begin capture.");
 
-        //let width = &capturer.width();
-        //let height = &capturer.height();
-
         // Capture loop
         let screen_width = &capturer.width();
         let screen_height = &capturer.height();
