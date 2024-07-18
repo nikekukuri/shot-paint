@@ -10,7 +10,6 @@
     - [ ] Circle
     - [ ] Arrow
 
-もともと capture_and_save_screenshot() においていたものをimpl ApplicationHandler for Appに移動させればよさそう。
 
 1. winitでウィンドウを作成
 2. winitでマウスのドラッグ＆ドロップの座標を取得

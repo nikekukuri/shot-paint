@@ -55,7 +55,7 @@ impl App {
             (start.x - end.x).abs(),
             (start.y - end.y).abs(),
         );
-        println!("Drawing selection: x={} y={} width={} height={}", x, y, width, height);
+        println!("Drawing selection: start_x={} start_y={} width={} height={}", x, y, width, height);
     }
 }
 
@@ -183,13 +183,13 @@ fn main() {
 
 fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos: Option<PhysicalPosition<f64>>) {
     if let (Some(start), Some(end)) = (start_pos, end_pos) {
-        let x_min = start.x.min(end.x) as i32;
-        let y_min = start.y.min(end.y) as i32;
-        let x_max = start.x.max(end.x) as i32;
-        let y_max = start.y.max(end.y) as i32;
+        let x_start = start.x.min(end.x) as usize;
+        let y_start = start.y.min(end.y) as usize;
+        let x_max = start.x.max(end.x) as usize;
+        let y_max = start.y.max(end.y) as usize;
 
-        let width = (x_max - x_min) as usize;
-        let height = (y_max - y_min) as usize;
+        let width = (x_max - x_start) as usize;
+        let height = (y_max - x_start) as usize;
 
         // Setup Display and Capturer
         let display = Display::primary().expect("Couldn't find primary display.");
@@ -199,7 +199,6 @@ fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos
         let screen_width = &capturer.width();
         let screen_height = &capturer.height();
 
-        // TODO: fix bug
         let frame = loop {
             match capturer.frame() {
                 Ok(buffer) => break buffer,
@@ -220,7 +219,7 @@ fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos
         // Change BGRA to RGBA
         for y in 0..*screen_height {
             for x in 0..*screen_width {
-                let i = y * stride + x * 4;
+                let i = y * stride + x * 4;  // One dimensional index
                 buffer[i] = frame[i + 2]; // R
                 buffer[i + 1] = frame[i + 1]; // G
                 buffer[i + 2] = frame[i]; // B
@@ -232,14 +231,19 @@ fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos
         let mut cropped_buffer = vec![0; width * height * 4];
         for y in 0..height {
             for x in 0..width {
-                let src_index = ((y_min + y as i32) as usize * stride + (x_min + x as i32) as usize * 4) as usize;
-                let dst_index = (y * width + x) * 4;
-                cropped_buffer[dst_index..dst_index + 4].copy_from_slice(&buffer[src_index..src_index + 4]);
+                let src_y = y_start + y;
+                let src_x = x_start + x;
+                if src_y < *screen_height && src_x < *screen_width {
+                    let src_index = (src_y as usize * stride + src_x as usize * 4) as usize;
+                    let dst_index = (y * width + x) * 4;
+                    cropped_buffer[dst_index..dst_index + 4].copy_from_slice(&buffer[src_index..src_index + 4]);
+                }
             }
         }
+        
+        let mut image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, cropped_buffer).expect("Couldn't create image buffer.");
 
-        let mut image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, buffer).expect("Couldn't create image buffer.");
-
+        // Test paint. Fill red color at upper left
         for (x, y, pixel) in image.enumerate_pixels_mut() {
             if x < 100 && y < 20 {
                 // Red fill at upper left 
