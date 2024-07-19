@@ -85,8 +85,6 @@ impl ApplicationHandler for App {
         _window_id: WindowId,
         event: WindowEvent,
     ) {
-        //info!("{event:?}");
-
         match event {
             WindowEvent::CloseRequested => {
                 self.close_requested = true;
@@ -116,33 +114,6 @@ impl ApplicationHandler for App {
                 if let Some(start) = self.drag_start {
                     self.draw_selection(self.window.as_ref().unwrap(), start, self.mouse_positon);
                 }
-            },
-            WindowEvent::KeyboardInput {
-                event: KeyEvent { logical_key: key, state: ElementState::Pressed, .. },
-                ..
-            } => match key.as_ref() {
-                // WARNING: Consider using `key_without_modifiers()` if available on your platform.
-                // See the `key_binding` example
-                Key::Character("1") => {
-                    self.mode = Mode::Wait;
-                    //warn!("mode: {:?}", self.mode);
-                },
-                Key::Character("2") => {
-                    self.mode = Mode::WaitUntil;
-                    //warn!("mode: {:?}", self.mode);
-                },
-                Key::Character("3") => {
-                    self.mode = Mode::Poll;
-                    //warn!("mode: {:?}", self.mode);
-                },
-                Key::Character("r") => {
-                    self.request_redraw = !self.request_redraw;
-                    //warn!("request_redraw: {}", self.request_redraw);
-                },
-                Key::Named(NamedKey::Escape) => {
-                    self.close_requested = true;
-                },
-                _ => (),
             },
             WindowEvent::RedrawRequested => {},
             _ => (),
