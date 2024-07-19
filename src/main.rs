@@ -6,6 +6,7 @@ use std::time;
 
 
 use image::{ImageBuffer, Rgba};
+use pixels::{Pixels, SurfaceTexture};
 use winit::{
     application::ApplicationHandler,
     event::{KeyEvent, Event, WindowEvent, MouseButton, ElementState, StartCause},
@@ -38,12 +39,12 @@ struct App {
     window: Option<Window>,
     mouse_positon: PhysicalPosition<f64>,
     drag_start: Option<PhysicalPosition<f64>>,
-    //position: PhysicalPosition::<f64>,
+    image: Option<ImageBuffer<Rgba<u8>, Vec<u8>>>,
 }
 
 impl App {
     fn select_range(&mut self, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
-        capture_and_save_screenshot(Some(start), Some(end));
+        self.image = capture_screenshot(Some(start), Some(end));
     }
 
     fn draw_selection(&self, window: &Window, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
@@ -95,7 +96,6 @@ impl ApplicationHandler for App {
                 match state {
                     ElementState::Pressed => {
                         if button == MouseButton::Left {
-                            // TODO: get mouse position
                             self.drag_start = Some(self.mouse_positon);
                         }
                     },
@@ -176,12 +176,12 @@ impl ApplicationHandler for App {
 
 fn main() {
     let event_loop = EventLoop::new().unwrap();
-    
     let mut app = App::default();
+
     event_loop.run_app(&mut app);
 }
 
-fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos: Option<PhysicalPosition<f64>>) {
+fn capture_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos: Option<PhysicalPosition<f64>>) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
     if let (Some(start), Some(end)) = (start_pos, end_pos) {
         let x_start = start.x.min(end.x) as usize;
         let y_start = start.y.min(end.y) as usize;
@@ -241,17 +241,18 @@ fn capture_and_save_screenshot(start_pos: Option<PhysicalPosition<f64>>, end_pos
             }
         }
         
-        let mut image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, cropped_buffer).expect("Couldn't create image buffer.");
+        let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width as u32, height as u32, cropped_buffer).expect("Couldn't create image buffer.");
 
         // Test paint. Fill red color at upper left
-        for (x, y, pixel) in image.enumerate_pixels_mut() {
-            if x < 100 && y < 20 {
-                // Red fill at upper left 
-                *pixel = Rgba([255, 0, 0, 255]);
-            }
-        }
+        //for (x, y, pixel) in image.enumerate_pixels_mut() {
+        //    if x < 100 && y < 20 {
+        //        // Red fill at upper left 
+        //        *pixel = Rgba([255, 0, 0, 255]);
+        //    }
+        //}
 
-        image.save("screenshot.png").expect("Couldn't save image.");
-        println!("Screen shot saved as screenshot.png");
+        Some(image)
+    } else {
+        None
     }
 }
