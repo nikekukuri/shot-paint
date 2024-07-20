@@ -6,15 +6,13 @@ use std::time;
 
 
 use image::{ImageBuffer, Rgba};
-use pixels::{Pixels, SurfaceTexture};
+use pixels::SurfaceTexture;
 use winit::{
     application::ApplicationHandler,
-    event::{KeyEvent, Event, WindowEvent, MouseButton, ElementState, StartCause},
+    event::{WindowEvent, MouseButton, ElementState, StartCause},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    keyboard::{Key, NamedKey},
     window::{Window, WindowId},
-    dpi::{LogicalPosition, PhysicalPosition},
-    platform::windows::WindowBorrowExtWindows,
+    dpi::PhysicalPosition,
 };
 
 
@@ -42,12 +40,15 @@ struct App {
     image: Option<ImageBuffer<Rgba<u8>, Vec<u8>>>,
 }
 
+//unsafe impl pixels::raw_window_handle::HasRawWindowHandle for winit::window::Window {}
+//unsafe impl pixels::raw_window_handle::HasRawDisplayHandle for winit::window::Window {}
+
 impl App {
     fn select_range(&mut self, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
         self.image = capture_screenshot(Some(start), Some(end));
     }
 
-    fn draw_selection(&self, window: &Window, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
+    fn draw_selection(&self, start: PhysicalPosition<f64>, end: PhysicalPosition<f64>) {
         // Implement drawing selection rectangle on the screen
         // This is a placeholder for the actual drawing logic
         let (x, y, width, height) = (
@@ -112,10 +113,23 @@ impl ApplicationHandler for App {
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_positon = position;
                 if let Some(start) = self.drag_start {
-                    self.draw_selection(self.window.as_ref().unwrap(), start, self.mouse_positon);
+                    self.draw_selection(start, self.mouse_positon);
                 }
             },
-            WindowEvent::RedrawRequested => {},
+            // From now!!
+            WindowEvent::RedrawRequested => {
+                let window_size = self.window.as_ref().unwrap().inner_size();
+                let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, self.window.as_ref().unwrap());
+                //let pixels = Pixels::new(window_size.width, window_size.height, surface_texture).unwrap();
+                if let Some(image) = &self.image {
+                    let frame = image.as_ref();
+                }
+                // Exit
+                //if pixels.render().is_err() {
+                //    unimplemented!();
+                //}
+
+            },
             _ => (),
         }
     }
